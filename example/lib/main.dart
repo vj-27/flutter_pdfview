@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +17,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   String pathPDF = "";
-  String remotePDFpath = "";
+  Uint8List remotePDFfile = Uint8List(0);
   String corruptedPathPDF = "";
 
   @override
@@ -35,13 +36,13 @@ class _MyAppState extends State<MyApp> {
 
     createFileOfPdfUrl().then((f) {
       setState(() {
-        remotePDFpath = f.path;
+        remotePDFfile = f;
       });
     });
   }
 
-  Future<File> createFileOfPdfUrl() async {
-    Completer<File> completer = Completer();
+  Future<Uint8List> createFileOfPdfUrl() async {
+    Completer<Uint8List> completer = Completer();
     print("Start download file from internet!");
     try {
       // "https://berlin2017.droidcon.cod.newthinking.net/sites/global.droidcon.cod.newthinking.net/files/media/documents/Flutter%20-%2060FPS%20UI%20of%20the%20future%20%20-%20DroidconDE%2017.pdf";
@@ -53,11 +54,7 @@ class _MyAppState extends State<MyApp> {
       var bytes = await consolidateHttpClientResponseBytes(response);
       var dir = await getApplicationDocumentsDirectory();
       print("Download files");
-      print("${dir.path}/$filename");
-      File file = File("${dir.path}/$filename");
-
-      await file.writeAsBytes(bytes, flush: true);
-      completer.complete(file);
+      completer.complete(bytes);
     } catch (e) {
       throw Exception('Error parsing asset file!');
     }
@@ -110,11 +107,11 @@ class _MyAppState extends State<MyApp> {
                 RaisedButton(
                   child: Text("Remote PDF"),
                   onPressed: () {
-                    if (remotePDFpath != null || remotePDFpath.isNotEmpty) {
+                    if (remotePDFfile != null || remotePDFfile.isNotEmpty) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => PDFScreen(path: remotePDFpath),
+                          builder: (context) => PDFScreen(bytes: remotePDFfile),
                         ),
                       );
                     }
@@ -145,8 +142,9 @@ class _MyAppState extends State<MyApp> {
 
 class PDFScreen extends StatefulWidget {
   final String path;
+  final Uint8List bytes;
 
-  PDFScreen({Key key, this.path}) : super(key: key);
+  PDFScreen({Key key, this.path, this.bytes}) : super(key: key);
 
   _PDFScreenState createState() => _PDFScreenState();
 }
@@ -174,7 +172,8 @@ class _PDFScreenState extends State<PDFScreen> with WidgetsBindingObserver {
       body: Stack(
         children: <Widget>[
           PDFView(
-            filePath: widget.path,
+            filePath: widget.path??null,
+            byteArr: widget.bytes??null,
             enableSwipe: true,
             swipeHorizontal: true,
             autoSpacing: false,
@@ -244,3 +243,4 @@ class _PDFScreenState extends State<PDFScreen> with WidgetsBindingObserver {
     );
   }
 }
+

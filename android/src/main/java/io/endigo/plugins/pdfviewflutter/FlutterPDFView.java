@@ -3,6 +3,7 @@ package io.endigo.plugins.pdfviewflutter;
 import android.content.Context;
 import android.view.View;
 import android.net.Uri;
+import android.util.Log;
 
 import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.plugin.common.MethodCall;
@@ -37,12 +38,62 @@ public class FlutterPDFView implements PlatformView, MethodCallHandler {
 
         linkHandler = new PDFLinkHandler(context, pdfView, methodChannel, preventLinkNavigation);
 
-        if (params.containsKey("filePath")) {
+        if ((String) params.get("filePath") != null) {
             String filePath = (String) params.get("filePath");
 
             Constants.PRELOAD_OFFSET = 3;
 
             pdfView.fromUri(getURI(filePath))
+                    .enableSwipe(getBoolean(params, "enableSwipe"))
+                    .swipeHorizontal(getBoolean(params, "swipeHorizontal"))
+                    .password(getString(params, "password"))
+                    .nightMode(getBoolean(params, "nightMode"))
+                    .autoSpacing(getBoolean(params, "autoSpacing"))
+                    .pageFling(getBoolean(params, "pageFling"))
+                    .pageSnap(getBoolean(params, "pageSnap"))
+                    .pageFitPolicy(getFitPolicy(params))
+                    .linkHandler(linkHandler).
+                    enableAntialiasing(false)
+                    // .fitEachPage(getBoolean(params,"fitEachPage"))
+                    .onPageChange(new OnPageChangeListener() {
+                        @Override
+                        public void onPageChanged(int page, int total) {
+                            Map<String, Object> args = new HashMap<>();
+                            args.put("page", page);
+                            args.put("total", total);
+                            methodChannel.invokeMethod("onPageChanged", args);
+                        }
+                    }).onError(new OnErrorListener() {
+                @Override
+                public void onError(Throwable t) {
+                    Map<String, Object> args = new HashMap<>();
+                    args.put("error", t.toString());
+                    methodChannel.invokeMethod("onError", args);
+                }
+            }).onPageError(new OnPageErrorListener() {
+                @Override
+                public void onPageError(int page, Throwable t) {
+                    Map<String, Object> args = new HashMap<>();
+                    args.put("page", page);
+                    args.put("error", t.toString());
+                    methodChannel.invokeMethod("onPageError", args);
+                }
+            }).onRender(new OnRenderListener() {
+                @Override
+                public void onInitiallyRendered(int pages) {
+                    Map<String, Object> args = new HashMap<>();
+                    args.put("pages", pages);
+                    methodChannel.invokeMethod("onRender", args);
+                }
+            }).enableDoubletap(true).defaultPage(getInt(params, "defaultPage")).load();
+        }
+        else {
+            byte[] byteF = (byte[]) params.get("byteArr");
+            String str=new String(byteF);  
+            Log.d("MyApp",str.substring(0, 4));
+            Constants.PRELOAD_OFFSET = 3;
+
+            pdfView.fromBytes(byteF)
                     .enableSwipe(getBoolean(params, "enableSwipe"))
                     .swipeHorizontal(getBoolean(params, "swipeHorizontal"))
                     .password(getString(params, "password"))
